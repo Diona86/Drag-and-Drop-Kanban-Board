@@ -1,19 +1,34 @@
-import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 import { TaskCard } from "./TaskCard";
 import type { Column, Task } from ".";
-import { useState } from "react";
+import React, { useState } from "react";
 import { Button } from "./components/ui/button";
 import { useKanbanStore } from "./store";
 import { Input } from "@/components/ui/input"; // 假设你有 shadcn Input
+import { useDroppable } from "@dnd-kit/core";
 
 interface ColumnProps {
   columnId: Column["id"];
   columnTitle: string;
   tasks: Task[];
+  overColumnId?: Column["id"] | null;
+  previewIndex?: number | null;
+  dragId?: string | null;
 }
 
-export function ColumnL({ columnId, columnTitle, tasks }: ColumnProps) {
+export function ColumnL({
+  columnId,
+  columnTitle,
+  tasks,
+  dragId,
+}: ColumnProps) {
   const addTask = useKanbanStore((state) => state.addTask);
+  const previePlaceholder = useKanbanStore(
+    (state) => state.previvewPlaceholder,
+  );
   const taskIds = tasks.map((t) => t.id);
 
   const [isAdding, setIsAdding] = useState(false);
@@ -28,11 +43,22 @@ export function ColumnL({ columnId, columnTitle, tasks }: ColumnProps) {
     setTitle("");
     setIsAdding(false);
   };
+  const { setNodeRef } = useDroppable({
+    id: columnId,
+    data: { type: "Column", columnId: columnId },
+  });
 
   return (
-    <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
+    <SortableContext
+      id={columnId}
+      items={taskIds}
+      strategy={verticalListSortingStrategy}
+    >
       {/* 根容器：固定宽度 + 铺满父容器高度 + flex 纵向 */}
-      <div className="w-80  flex flex-col bg-neutral-800 rounded-xl overflow-hidden border border-gray-700 shadow-lg">
+      <div
+        ref={setNodeRef}
+        className="w-100  flex flex-col bg-neutral-800 rounded-xl overflow-hidden border border-gray-700 shadow-lg"
+      >
         {/* 标题栏 */}
         <div className="p-4  border-b border-gray-700">
           <h3 className="font-semibold text-lg text-white">{columnTitle}</h3>
@@ -40,9 +66,21 @@ export function ColumnL({ columnId, columnTitle, tasks }: ColumnProps) {
 
         {/* 任务列表区域：flex-1 让它自动撑满剩余空间 */}
         <div className="flex-1 p-3 space-y-3 overflow-y-auto">
-          {tasks.map((task) => (
-            <TaskCard key={task.id} task={task} />
-          ))}
+          {tasks.map((task, index) => {
+            const draggingTask=useKanbanStore.getState().findTaskById(dragId ?? "");
+            const isPreview =
+              previePlaceholder?.columnId === columnId &&
+              previePlaceholder.index === index&&draggingTask?.columnId !== columnId;
+            return (
+              <React.Fragment key={task.id}>
+                {/* 在每个任务前加占位（当 previewIndex === index 时显示） */}
+                {isPreview && (
+                  <div className="h-8 bg-primary/10 border-2 border-dashed border-primary/50 rounded-xl animate-pulse" />
+                )}
+                <TaskCard task={task} />
+              </React.Fragment>
+            );
+          })}
 
           {tasks.length === 0 && (
             <div className="h-full flex items-center justify-center text-gray-400 text-sm">

@@ -9,6 +9,10 @@ export type Task={
     columnId:Column["id"],
     title:string,
     orderInColumn:number,
-    priority:"high"|"medium"|"low"
-
+    priority:"high"|"medium"|"low",
+    props:string,
+    description?:string
+    dueDate?:string,
+    isCompleted?:boolean,
+    createdAt: string,
 }
